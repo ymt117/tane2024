@@ -252,7 +252,7 @@ bool CansatLib::_sdInit() {
 bool CansatLib::_createLogFile() {
   APP_PRINT_I("called _createLogFile()\n");
 
-#ifdef CREATE_NEW_LOG_FILE
+#ifdef DELETE_EXIST_LOG_FILE
   APP_PRINT_I("remove log.csv...");
   SD.remove("log/log.csv");
   APP_PRINT_I("done.\n");

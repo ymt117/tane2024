@@ -8,7 +8,7 @@
 #include <Adafruit_BNO055.h>
 #include "PrintLib.h"
 
-#define CREATE_NEW_LOG_FILE
+#define DELETE_EXIST_LOG_FILE
 
 #define TweliteBegin(baud) Serial2.begin(baud); while(!Serial2) {}
 #define TweliteSend(c)     Serial2.print(c)
