@@ -125,6 +125,11 @@ void CansatLib::Led_isError(bool state) {
 }
 
 void CansatLib::mForward(int pwm) {
+  APP_PRINT_I("called mForward()");
+  APP_PRINT_I(" pwm: ");
+  APP_PRINT_I(String(pwm));
+  APP_PRINT_I("\n");
+
   digitalWrite(_motorA[0], HIGH);
   digitalWrite(_motorA[1], LOW);
   analogWrite(_motorA[2], pwm);
@@ -135,6 +140,11 @@ void CansatLib::mForward(int pwm) {
 }
 
 void CansatLib::mTurnRight(int pwm) {
+  APP_PRINT_I("called mTurnRight()");
+  APP_PRINT_I(" pwm: ");
+  APP_PRINT_I(String(pwm));
+  APP_PRINT_I("\n");
+
   digitalWrite(_motorA[0], HIGH);
   digitalWrite(_motorA[1], LOW);
   analogWrite(_motorA[2], pwm);
@@ -145,6 +155,11 @@ void CansatLib::mTurnRight(int pwm) {
 }
 
 void CansatLib::mTurnLeft(int pwm) {
+  APP_PRINT_I("called mTurnLeft()");
+  APP_PRINT_I(" pwm: ");
+  APP_PRINT_I(String(pwm));
+  APP_PRINT_I("\n");
+
   digitalWrite(_motorA[0], LOW);
   digitalWrite(_motorA[1], HIGH);
   analogWrite(_motorA[2], pwm);
@@ -155,6 +170,8 @@ void CansatLib::mTurnLeft(int pwm) {
 }
 
 void CansatLib::mStop() {
+  APP_PRINT_I("called mStop()\n");
+
   digitalWrite(_motorA[0], LOW);
   digitalWrite(_motorA[1], LOW);
   analogWrite(_motorA[2], 0);
@@ -165,18 +182,23 @@ void CansatLib::mStop() {
 }
 
 void CansatLib::spStart() {
+  APP_PRINT_I("called spStart()\n");
   _beep(_start, sizeof(_start)/sizeof(float), 150);
 }
 
 void CansatLib::spError() {
+  APP_PRINT_I("called spError()\n");
   _beep(_error, sizeof(_error)/sizeof(float), 300);
 }
 
 void CansatLib::spBeep() {
+  APP_PRINT_I("called spBeep()\n");
   _beep(_bell, sizeof(_bell)/sizeof(float), 200);
 }
 
 int CansatLib::readCds() {
+  APP_PRINT_I("called readCds()\n");
+
   static int cdsVal = 0;
   cdsVal = analogRead(_cds);
   return cdsVal;
