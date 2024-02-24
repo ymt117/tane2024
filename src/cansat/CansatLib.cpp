@@ -1,3 +1,4 @@
+#include "File.h"
 #include "GNSS.h"
 #include "CansatLib.h"
 #include "PrintLib.h"
@@ -23,6 +24,10 @@ void CansatLib::begin() {
     errorFlag = 1;
   }
 
+  if (!_createLogFile()) {
+    errorFlag = 1;
+  }
+
   if (!_gnssInit()) {
     errorFlag = 1;
   }
@@ -36,6 +41,32 @@ void CansatLib::begin() {
     spError();
     exit(0);
   }
+}
+
+/**
+ * @brief ログファイルに追記する
+ */
+bool CansatLib::appendLog() {
+  APP_PRINT_I("called appendLog()\n");
+
+  unsigned long currentTime = millis();
+
+  String message = "";
+  message += String(currentTime); message += ",";
+
+  myFile = SD.open("log/log.csv", FILE_WRITE);
+
+  if (!myFile) {
+    APP_PRINT_E("error opening log.csv");
+    return false;
+  }
+
+  APP_PRINT_I("writing to log.csv...");
+  myFile.println(message);
+  myFile.close();
+  APP_PRINT_I("done.\n");
+
+  return true;
 }
 
 /**
@@ -214,7 +245,32 @@ bool CansatLib::_sdInit() {
     APP_PRINT_E("No SD detected\n");
     return false;
   }
+
+  return true;
+}
+
+bool CansatLib::_createLogFile() {
+  APP_PRINT_I("called _createLogFile()\n");
+
+#ifdef CREATE_NEW_LOG_FILE
+  APP_PRINT_I("remove log.csv...");
+  SD.remove("log/log.csv");
+  APP_PRINT_I("done.\n");
+#endif
+
   SD.mkdir("log/");
+  myFile = SD.open("log/log.csv", FILE_WRITE);
+
+  if (!myFile) {
+    APP_PRINT_E("error opening log.csv\n");
+    return false;
+  }
+
+  APP_PRINT_I("writing to log.csv...");
+  myFile.println("time,mode,lat,lng,alt,mr_pwm,ml_pwm,cds,ax,ay,az,gx,gy,gz,mx,my,mz,roll,pitch,yaw");
+  myFile.close();
+  APP_PRINT_I("done.\n");
+
   return true;
 }
 

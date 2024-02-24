@@ -87,6 +87,7 @@ void loop() {
 void standBy() {
   // 一定の高度を超えたら LAUNCH モードに遷移する
   sat.posUpdate();
+  sat.appendLog();
 }
 
 /**

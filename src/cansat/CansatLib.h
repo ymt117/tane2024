@@ -8,6 +8,8 @@
 #include <Adafruit_BNO055.h>
 #include "PrintLib.h"
 
+#define CREATE_NEW_LOG_FILE
+
 #define TweliteBegin(baud) Serial2.begin(baud); while(!Serial2) {}
 #define TweliteSend(c)     Serial2.print(c)
 
@@ -37,6 +39,7 @@ class CansatLib {
     /** SDカード */
     SDClass SD;
     File myFile;
+    bool appendLog();
 
     /** GNSS受信機 */
     SpGnss Gnss;
@@ -78,6 +81,7 @@ class CansatLib {
 
     /** SDカード */
     bool _sdInit();
+    bool _createLogFile();
 
     /** GNSS受信機 */
     bool _gnssInit();
