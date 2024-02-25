@@ -49,10 +49,7 @@ void CansatLib::begin() {
 bool CansatLib::appendLog() {
   APP_PRINT_I("called appendLog()\n");
 
-  unsigned long currentTime = millis();
-
-  String message = "";
-  message += String(currentTime); message += ",";
+  String message = _createMessage();
 
   myFile = SD.open("log/log.csv", FILE_WRITE);
 
@@ -70,7 +67,7 @@ bool CansatLib::appendLog() {
 }
 
 /**
- * @brief 緯度・経度の値を更新する
+ * @brief 時刻・緯度・経度・高度・ゴールとの距離・方位の値を更新する
  */
 void CansatLib::posUpdate() {
   APP_PRINT_I("called posUpdate()\n");
@@ -95,14 +92,19 @@ void CansatLib::posUpdate() {
       APP_PRINT_I("\n");
       APP_PRINT_I("No Position");
     } else {
+      currentDate = _createDate(NavData.time);
       currentLat = NavData.latitude;
       currentLng = NavData.longitude;
       currentAlt = NavData.altitude;
-      APP_PRINT_I(String(currentLat, 6));
-      APP_PRINT_I(",");
-      APP_PRINT_I(String(currentLng, 6));
-      APP_PRINT_I(",");
-      APP_PRINT_I(String(currentAlt, 2));
+      distance2goal = _haversineDistance(currentLat, currentLng, userConfig.goalLat, userConfig.goalLng);
+      direction2goal = _haversineBearing(currentLat, currentLng, userConfig.goalLat, userConfig.goalLng);
+
+      APP_PRINT_I(currentDate);               APP_PRINT_I(",");
+      APP_PRINT_I(String(currentLat, 6));     APP_PRINT_I(",");
+      APP_PRINT_I(String(currentLng, 6));     APP_PRINT_I(",");
+      APP_PRINT_I(String(currentAlt, 2));     APP_PRINT_I(",");
+      APP_PRINT_I(String(distance2goal, 2));  APP_PRINT_I(",");
+      APP_PRINT_I(String(direction2goal, 2)); APP_PRINT_I(",");
     }
 
     APP_PRINT_I("\n");
@@ -267,7 +269,7 @@ bool CansatLib::_createLogFile() {
   }
 
   APP_PRINT_I("writing to log.csv...");
-  myFile.println("time,mode,lat,lng,alt,mr_pwm,ml_pwm,cds,ax,ay,az,gx,gy,gz,mx,my,mz,roll,pitch,yaw");
+  myFile.println(CSV_HEADER);
   myFile.close();
   APP_PRINT_I("done.\n");
 
@@ -315,4 +317,76 @@ void CansatLib::_beep(float *mm, int m_size, int b_time) {
     delay(b_time);
   }
   noTone(_speaker);
+}
+
+/** 
+ * @brief GNSS受信した値から現在時刻の文字列を作成する
+ * @param [in] time SpGnssTime SpNavData::time
+ * @return 現在時刻
+ */
+String CansatLib::_createDate(SpGnssTime time) {
+  APP_PRINT_I("called _createDate()\n");
+
+  // YYYY/MM/DD hh:mm:ssZ
+  String date = "";
+  date += String(time.year);   date += "/";
+  date += String(time.month);  date += "/";
+  date += String(time.day);    date += " ";
+  date += String(time.hour);   date += ":";
+  date += String(time.minute); date += ":";
+  date += String(time.sec);    date += "Z";
+
+  return date;
+}
+
+/**
+ * @brief ハーバインの公式による距離計算
+ * @param [in] lat1 出発点の緯度
+ * @param [in] lng1 出発点の経度
+ * @param [in] lat2 到着点の緯度
+ * @param [in] lng2 到着点の経度
+ * @return 出発点から到着点ヘの距離
+ */
+double CansatLib::_haversineDistance(double lat1, double lng1, double lat2, double lng2) {
+  APP_PRINT_I("called _haversineDistance()\n");
+
+  double dLat = TO_RADIANS(lat2 - lat1);
+  double dLon = TO_RADIANS(lng2 - lng1);
+  double a = pow(sin(dLat / 2), 2) + cos(TO_RADIANS(lat1)) * cos(TO_RADIANS(lat2)) * pow(sin(dLon / 2), 2);
+  double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+  return EARTH_RADIUS * c;
+}
+
+/**
+ * @brief ハーバインの公式による方位計算
+ * @param [in] lat1 出発点の緯度
+ * @param [in] lng1 出発点の経度
+ * @param [in] lat2 到着点の緯度
+ * @param [in] lng2 到着点の経度
+ * @return 出発点から到着点ヘの方位
+ */
+double CansatLib::_haversineBearing(double lat1, double lng1, double lat2, double lng2) {
+  APP_PRINT_I("called _haversineBearing()\n");
+
+  double dLon = TO_RADIANS(lng2 - lng1);
+  double y = sin(dLon) * cos(TO_RADIANS(lat2));
+  double x = cos(TO_RADIANS(lat1)) * sin(TO_RADIANS(lat2)) -
+          sin(TO_RADIANS(lat1)) * cos(TO_RADIANS(lat2)) * cos(dLon);
+  double bearing = atan2(y, x);
+  return TO_DEGREES(bearing);
+}
+
+/**
+ * @brief ログへ記録、または地上局へ送信するメッセージを一行分作成する
+ * @return ログへ記録する値
+ */
+String CansatLib::_createMessage() {
+  APP_PRINT_I("called _createMessage()\n");
+
+  unsigned long currentTime = millis();
+
+  String message = "";
+  message += String(currentTime); message += ",";
+
+  return message;
 }

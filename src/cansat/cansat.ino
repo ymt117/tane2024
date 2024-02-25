@@ -1,5 +1,6 @@
 #include "CansatLib.h"
 #include "PrintLib.h"
+#include "Dango.h"
 
 CansatLib sat;
 AppPrintLevel AppDebugPrintLevel;
@@ -22,6 +23,10 @@ void setup() {
   AppDebugPrintLevel = (AppPrintLevel)sat.printLevel;
 
   sat.begin();
+  // ゴール座標を設定する
+  // TODO: SDカードから設定ファイルを読み込めるようにする
+  sat.userConfig.goalLat = 35.658582;
+  sat.userConfig.goalLng = 139.7454544;
 
   APP_PRINT("Hello 100kinSAT!!!\n");
   TweliteSend("Hello 100kinSAT!!!\n");
@@ -43,6 +48,10 @@ void loop() {
 
     // switch-case文でCanSatの状態遷移を行う
     switch (sat.state) {
+      case CansatState::CALIBRATION:
+        APP_PRINT("*** CALIBRATION ***\n");
+        break;
+
       case CansatState::STAND_BY:
         APP_PRINT("*** STAND BY ***\n");
         standBy();
@@ -79,6 +88,14 @@ void loop() {
   }
 
   delay(1000);
+}
+
+/**
+ * @brief キャリブレーション処理
+ */
+void calibration() {
+  // IMUセンサのキャリブレーション
+  // 高度のキャリブレーション（地表をゼロメートルに合わせる）
 }
 
 /**
@@ -125,4 +142,5 @@ void navigation() {
  */
 void goal() {
   // だんご大家族を演奏する
+  // LED2を点灯する
 }
