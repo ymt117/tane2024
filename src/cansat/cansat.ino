@@ -49,36 +49,36 @@ void loop() {
     // switch-case文でCanSatの状態遷移を行う
     switch (sat.state) {
       case CansatState::CALIBRATION:
-        APP_PRINT("*** CALIBRATION ***\n");
+        APP_PRINT_I("*** CALIBRATION ***\n");
         break;
 
       case CansatState::STAND_BY:
-        APP_PRINT("*** STAND BY ***\n");
+        APP_PRINT_I("*** STAND BY ***\n");
         standBy();
         break;
 
       case CansatState::LAUNCH:
-        APP_PRINT("*** LAUNCH ***\n");
+        APP_PRINT_I("*** LAUNCH ***\n");
         launch();
         break;
 
       case CansatState::DROP:
-        APP_PRINT("*** DROP ***\n");
+        APP_PRINT_I("*** DROP ***\n");
         drop();
         break;
 
       case CansatState::LANDING:
-        APP_PRINT("*** LANDING ***\n");
+        APP_PRINT_I("*** LANDING ***\n");
         landing();
         break;
 
       case CansatState::NAVIGATION:
-        APP_PRINT("*** NAVIGATION ***\n");
+        APP_PRINT_I("*** NAVIGATION ***\n");
         navigation();
         break;
 
       case CansatState::GOAL:
-        APP_PRINT("*** GOAL ***\n");
+        APP_PRINT_I("*** GOAL ***\n");
         goal();
         break;
 
@@ -87,7 +87,7 @@ void loop() {
     }
   }
 
-  delay(1000);
+  delay(50);
 }
 
 /**
@@ -103,8 +103,12 @@ void calibration() {
  */
 void standBy() {
   // 一定の高度を超えたら LAUNCH モードに遷移する
-  sat.posUpdate();
+  sat.updateSensorValue();
   sat.appendLog();
+  sat.printSensorValue();
+  // delay(2000);
+  // playDango();
+  // while(1){}
 }
 
 /**
@@ -127,7 +131,9 @@ void drop() {
  * @brief 着地処理
  */
 void landing() {
-  // パラシュートを切り離したら NAVIGATION モードに遷移する
+  // パラシュートの切り離し
+  // 着地時の姿勢判定・修正 
+  // NAVIGATION モードに遷移する
 }
 
 /**

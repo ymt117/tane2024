@@ -50,7 +50,7 @@ class CansatLib {
     /** SDカード */
     SDClass SD;
     File myFile;
-    const String CSV_HEADER = "time,date,mode,lat,lng,alt,mr_pwm,ml_pwm,cds,ax,ay,az,gx,gy,gz,mx,my,mz,roll,pitch,yaw";
+    const String CSV_HEADER = "time,date,mode,lat,lng,alt,distance,direction,mr_pwm,ml_pwm,cds,ax,ay,az,gx,gy,gz,mx,my,mz,roll,pitch,heading";
     bool appendLog();
 
     /** GNSS受信機 */
@@ -60,12 +60,15 @@ class CansatLib {
     double currentLat = 0.0;
     double currentLng = 0.0;
     double currentAlt = 0.0;
-    void posUpdate();
     double distance2goal = 10000.0;
     double direction2goal = 0.0;
 
     // IMUセンサ
     Adafruit_BNO055 bno = Adafruit_BNO055();
+    float heading, pitch, roll = -1000000;
+    float accX,  accY,  accZ  = -1000000;
+    float gyroX, gyroY, gyroZ = -1000000;
+    float magX,  magY,  magZ  = -1000000; 
 
     /** LED */
     void Led_isActive();
@@ -87,10 +90,10 @@ class CansatLib {
     int readCds();
 
     /** Utils */
-    /** 現在地とゴールとの距離を取得する */
-    double getGoalDistance();
-    /** 現在地からゴールへの方位を取得する */
-    double getGoalDirection();
+    /** センサーの情報を更新する */
+    void updateSensorValue();
+    /** センサの情報をシリアル出力する */
+    void printSensorValue();
 
   private:
     /** GPIO */
@@ -106,9 +109,11 @@ class CansatLib {
 
     /** GNSS受信機 */
     bool _gnssInit();
+    void _updateGnss();
 
     /** IMUセンサ */
     bool _imuInit();
+    void _updateImuValue();
 
     /** スピーカ */
     float mC = 261.626;

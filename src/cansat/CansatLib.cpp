@@ -32,9 +32,9 @@ void CansatLib::begin() {
     errorFlag = 1;
   }
 
-  // if (!_imuInit()) {
-  //   errorFlag = 1;
-  // }
+  if (!_imuInit()) {
+    errorFlag = 1;
+  }
 
   if (errorFlag == 1) {
     Led_isError(true);
@@ -64,53 +64,6 @@ bool CansatLib::appendLog() {
   APP_PRINT_I("done.\n");
 
   return true;
-}
-
-/**
- * @brief 時刻・緯度・経度・高度・ゴールとの距離・方位の値を更新する
- */
-void CansatLib::posUpdate() {
-  APP_PRINT_I("called posUpdate()\n");
-
-  static bool PosFixflag = false;
-  bool LedSat;
-
-  if (Gnss.waitUpdate(-1)) {
-    SpNavData NavData;
-    Gnss.getNavData(&NavData);
-
-    LedSat = ((NavData.posDataExist) && (NavData.posFixMode != FixInvalid));
-    if (PosFixflag != LedSat) {
-      Led_isPosfix(LedSat);
-      PosFixflag = LedSat;
-    }
-
-    char StringBuffer[STRING_BUFFER_SIZE];
-    if (NavData.posDataExist == 0) {
-      APP_PRINT_I("numSat: ");
-      APP_PRINT_I(NavData.numSatellites);
-      APP_PRINT_I("\n");
-      APP_PRINT_I("No Position");
-    } else {
-      currentDate = _createDate(NavData.time);
-      currentLat = NavData.latitude;
-      currentLng = NavData.longitude;
-      currentAlt = NavData.altitude;
-      distance2goal = _haversineDistance(currentLat, currentLng, userConfig.goalLat, userConfig.goalLng);
-      direction2goal = _haversineBearing(currentLat, currentLng, userConfig.goalLat, userConfig.goalLng);
-
-      APP_PRINT_I(currentDate);               APP_PRINT_I(",");
-      APP_PRINT_I(String(currentLat, 6));     APP_PRINT_I(",");
-      APP_PRINT_I(String(currentLng, 6));     APP_PRINT_I(",");
-      APP_PRINT_I(String(currentAlt, 2));     APP_PRINT_I(",");
-      APP_PRINT_I(String(distance2goal, 2));  APP_PRINT_I(",");
-      APP_PRINT_I(String(direction2goal, 2)); APP_PRINT_I(",");
-    }
-
-    APP_PRINT_I("\n");
-  } else {
-    APP_PRINT_I("data not update\n");
-  }
 }
 
 /**
@@ -237,6 +190,23 @@ int CansatLib::readCds() {
   return cdsVal;
 }
 
+void CansatLib::updateSensorValue() {
+  APP_PRINT_I("called updateSensorValue()\n");
+  _updateGnss();
+  _updateImuValue();
+}
+
+void CansatLib::printSensorValue() {
+  APP_PRINT_I("called printSensorValue()\n");
+  // Serial.print("roll: "); Serial.print(roll);
+  // Serial.print("pitch: "); Serial.print(pitch);
+  // Serial.print("heading: "); Serial.print(heading);
+  Serial.print(accX); Serial.print(",");
+  Serial.print(accY); Serial.print(",");
+  Serial.print(accZ);
+  Serial.println();
+}
+
 /***********************
  *** プライベート関数 ***
  ***********************/
@@ -299,6 +269,53 @@ bool CansatLib::_gnssInit() {
   return true;
 }
 
+/**
+ * @brief 時刻・緯度・経度・高度・ゴールとの距離・方位の値を更新する
+ */
+void CansatLib::_updateGnss() {
+  APP_PRINT_I("called _updateGnss()\n");
+
+  static bool PosFixflag = false;
+  bool LedSat;
+
+  if (Gnss.waitUpdate(-1)) {
+    SpNavData NavData;
+    Gnss.getNavData(&NavData);
+
+    LedSat = ((NavData.posDataExist) && (NavData.posFixMode != FixInvalid));
+    if (PosFixflag != LedSat) {
+      Led_isPosfix(LedSat);
+      PosFixflag = LedSat;
+    }
+
+    char StringBuffer[STRING_BUFFER_SIZE];
+    if (NavData.posDataExist == 0) {
+      APP_PRINT_I("numSat: ");
+      APP_PRINT_I(NavData.numSatellites);
+      APP_PRINT_I("\n");
+      APP_PRINT_I("No Position");
+    } else {
+      currentDate = _createDate(NavData.time);
+      currentLat = NavData.latitude;
+      currentLng = NavData.longitude;
+      currentAlt = NavData.altitude;
+      distance2goal = _haversineDistance(currentLat, currentLng, userConfig.goalLat, userConfig.goalLng);
+      direction2goal = _haversineBearing(currentLat, currentLng, userConfig.goalLat, userConfig.goalLng);
+
+      APP_PRINT_I(currentDate);               APP_PRINT_I(",");
+      APP_PRINT_I(String(currentLat, 6));     APP_PRINT_I(",");
+      APP_PRINT_I(String(currentLng, 6));     APP_PRINT_I(",");
+      APP_PRINT_I(String(currentAlt, 2));     APP_PRINT_I(",");
+      APP_PRINT_I(String(distance2goal, 2));  APP_PRINT_I(",");
+      APP_PRINT_I(String(direction2goal, 2)); APP_PRINT_I(",");
+    }
+
+    APP_PRINT_I("\n");
+  } else {
+    APP_PRINT_I("data not update\n");
+  }
+}
+
 bool CansatLib::_imuInit() {
   APP_PRINT_I("called _imuInit()\n");
 
@@ -307,6 +324,27 @@ bool CansatLib::_imuInit() {
     return false;
   }
   return true;
+}
+
+void CansatLib::_updateImuValue() {
+  APP_PRINT_I("called _updateImuValue()\n");
+
+  sensors_event_t event, accelerometerData;
+  bno.getEvent(&event);
+  bno.getEvent(&accelerometerData, Adafruit_BNO055::VECTOR_ACCELEROMETER);
+
+  heading = event.orientation.x;
+  pitch = event.orientation.y;
+  roll = event.orientation.z;
+  accX = accelerometerData.acceleration.x;
+  accY = accelerometerData.acceleration.y;
+  accZ = accelerometerData.acceleration.z;
+  gyroX = event.gyro.x;
+  gyroY = event.gyro.y;
+  gyroZ = event.gyro.z;
+  magX = event.magnetic.x;
+  magY = event.magnetic.y;
+  magZ = event.magnetic.z;
 }
 
 void CansatLib::_beep(float *mm, int m_size, int b_time) {
@@ -386,7 +424,29 @@ String CansatLib::_createMessage() {
   unsigned long currentTime = millis();
 
   String message = "";
-  message += String(currentTime); message += ",";
+  message += String(currentTime);    message += ","; // time
+  message += String(currentDate);    message += ","; // date
+  message += String((int)state);     message += ","; // mode
+  message += String(currentLat);     message += ","; // lat
+  message += String(currentLng);     message += ","; // lng
+  message += String(currentAlt);     message += ","; // alt
+  message += String(distance2goal);  message += ","; // distance
+  message += String(direction2goal); message += ","; // direction
+  message += ","; // mr_pwm
+  message += ","; // ml_pwm
+  message += ","; // cds
+  message += String(accX);           message += ","; // ax
+  message += String(accY);           message += ","; // ay
+  message += String(accZ);           message += ","; // az
+  message += String(gyroX);          message += ","; // gx
+  message += String(gyroY);          message += ","; // gy
+  message += String(gyroZ);          message += ","; // gz
+  message += String(magX);           message += ","; // mx
+  message += String(magY);           message += ","; // my
+  message += String(magZ);           message += ","; // mz
+  message += String(roll);           message += ","; // roll
+  message += String(pitch);          message += ","; // pitch
+  message += String(heading);        message += ","; // heading
 
   return message;
 }
