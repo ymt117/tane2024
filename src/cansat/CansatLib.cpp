@@ -1,3 +1,4 @@
+#include "leds.h"
 #include "File.h"
 #include "GNSS.h"
 #include "CansatLib.h"
@@ -13,8 +14,8 @@ void CansatLib::begin() {
   TweliteBegin(115200);
 
   for (int i = 0; i < 3; i++) {
-    pinMode(_motorA[i], OUTPUT);
-    pinMode(_motorB[i], OUTPUT);
+    pinMode(_motorR[i], OUTPUT);
+    pinMode(_motorL[i], OUTPUT);
   }
   pinMode(_speaker, OUTPUT);
   pinMode(_heat, OUTPUT);
@@ -63,6 +64,8 @@ bool CansatLib::appendLog() {
   myFile.close();
   APP_PRINT_I("done.\n");
 
+  TweliteSend(message); // 無線でログを送信
+
   return true;
 }
 
@@ -96,6 +99,19 @@ void CansatLib::Led_isPosfix(bool state) {
   }
 }
 
+void CansatLib::Led_isGoal(void) {
+  APP_PRINT_I("called Led_isGoal()\n");
+
+  static int state = 1;
+  if (state == 1) {
+    ledOn(PIN_LED2);
+    state = 0;
+  } else {
+    ledOff(PIN_LED2);
+    state = 1;
+  }
+}
+
 /**
  * @brief LED3のオン/オフを切り替える。エラーのとき点灯する。
  * @param [in] state エラーステータス
@@ -116,13 +132,16 @@ void CansatLib::mForward(int pwm) {
   APP_PRINT_I(String(pwm));
   APP_PRINT_I("\n");
 
-  digitalWrite(_motorA[0], HIGH);
-  digitalWrite(_motorA[1], LOW);
-  analogWrite(_motorA[2], pwm);
+  mr_pwm = pwm;
+  ml_pwm = pwm;
 
-  digitalWrite(_motorB[0], HIGH);
-  digitalWrite(_motorB[1], LOW);
-  analogWrite(_motorB[2], pwm);
+  digitalWrite(_motorR[0], HIGH);
+  digitalWrite(_motorR[1], LOW);
+  analogWrite(_motorR[2], pwm);
+
+  digitalWrite(_motorL[0], HIGH);
+  digitalWrite(_motorL[1], LOW);
+  analogWrite(_motorL[2], pwm);
 }
 
 void CansatLib::mTurnRight(int pwm) {
@@ -131,13 +150,16 @@ void CansatLib::mTurnRight(int pwm) {
   APP_PRINT_I(String(pwm));
   APP_PRINT_I("\n");
 
-  digitalWrite(_motorA[0], HIGH);
-  digitalWrite(_motorA[1], LOW);
-  analogWrite(_motorA[2], pwm);
+  mr_pwm = pwm;
+  ml_pwm = pwm;
 
-  digitalWrite(_motorB[0], HIGH);
-  digitalWrite(_motorB[1], LOW);
-  analogWrite(_motorB[2], pwm);
+  digitalWrite(_motorR[0], HIGH);
+  digitalWrite(_motorR[1], LOW);
+  analogWrite(_motorR[2], pwm);
+
+  digitalWrite(_motorL[0], HIGH);
+  digitalWrite(_motorL[1], LOW);
+  analogWrite(_motorL[2], pwm);
 }
 
 void CansatLib::mTurnLeft(int pwm) {
@@ -146,25 +168,31 @@ void CansatLib::mTurnLeft(int pwm) {
   APP_PRINT_I(String(pwm));
   APP_PRINT_I("\n");
 
-  digitalWrite(_motorA[0], LOW);
-  digitalWrite(_motorA[1], HIGH);
-  analogWrite(_motorA[2], pwm);
+  mr_pwm = pwm;
+  ml_pwm = pwm;
 
-  digitalWrite(_motorB[0], LOW);
-  digitalWrite(_motorB[1], HIGH);
-  analogWrite(_motorB[2], pwm);
+  digitalWrite(_motorR[0], LOW);
+  digitalWrite(_motorR[1], HIGH);
+  analogWrite(_motorR[2], pwm);
+
+  digitalWrite(_motorL[0], LOW);
+  digitalWrite(_motorL[1], HIGH);
+  analogWrite(_motorL[2], pwm);
 }
 
 void CansatLib::mStop() {
   APP_PRINT_I("called mStop()\n");
 
-  digitalWrite(_motorA[0], LOW);
-  digitalWrite(_motorA[1], LOW);
-  analogWrite(_motorA[2], 0);
+  mr_pwm = 0;
+  ml_pwm = 0;
 
-  digitalWrite(_motorB[0], LOW);
-  digitalWrite(_motorB[1], LOW);
-  analogWrite(_motorB[2], 0);
+  digitalWrite(_motorR[0], LOW);
+  digitalWrite(_motorR[1], LOW);
+  analogWrite(_motorR[2], 0);
+
+  digitalWrite(_motorL[0], LOW);
+  digitalWrite(_motorL[1], LOW);
+  analogWrite(_motorL[2], 0);
 }
 
 void CansatLib::spStart() {
@@ -182,6 +210,14 @@ void CansatLib::spBeep() {
   _beep(_bell, sizeof(_bell)/sizeof(float), 200);
 }
 
+void CansatLib::heatWire(int pwm, int time) {
+  APP_PRINT_I("called heatWire()\n");
+
+  analogWrite(_heat, pwm);
+  delay(time);
+  digitalWrite(_heat, LOW);
+}
+
 int CansatLib::readCds() {
   APP_PRINT_I("called readCds()\n");
 
@@ -194,6 +230,7 @@ void CansatLib::updateSensorValue() {
   APP_PRINT_I("called updateSensorValue()\n");
   _updateGnss();
   _updateImuValue();
+  _updateCdsValue();
 }
 
 void CansatLib::printSensorValue() {
@@ -201,9 +238,10 @@ void CansatLib::printSensorValue() {
   // Serial.print("roll: "); Serial.print(roll);
   // Serial.print("pitch: "); Serial.print(pitch);
   // Serial.print("heading: "); Serial.print(heading);
-  Serial.print(accX); Serial.print(",");
-  Serial.print(accY); Serial.print(",");
-  Serial.print(accZ);
+  // Serial.print(accX); Serial.print(",");
+  // Serial.print(accY); Serial.print(",");
+  // Serial.print(accZ); Serial.print(",");
+  Serial.print(cdsValue);
   Serial.println();
 }
 
@@ -299,15 +337,15 @@ void CansatLib::_updateGnss() {
       currentLat = NavData.latitude;
       currentLng = NavData.longitude;
       currentAlt = NavData.altitude;
-      distance2goal = _haversineDistance(currentLat, currentLng, userConfig.goalLat, userConfig.goalLng);
-      direction2goal = _haversineBearing(currentLat, currentLng, userConfig.goalLat, userConfig.goalLng);
+      distanceToGoal = _haversineDistance(currentLat, currentLng, userConfig.goalLat, userConfig.goalLng);
+      directionToGoal = _haversineBearing(currentLat, currentLng, userConfig.goalLat, userConfig.goalLng);
 
       APP_PRINT_I(currentDate);               APP_PRINT_I(",");
       APP_PRINT_I(String(currentLat, 6));     APP_PRINT_I(",");
       APP_PRINT_I(String(currentLng, 6));     APP_PRINT_I(",");
       APP_PRINT_I(String(currentAlt, 2));     APP_PRINT_I(",");
-      APP_PRINT_I(String(distance2goal, 2));  APP_PRINT_I(",");
-      APP_PRINT_I(String(direction2goal, 2)); APP_PRINT_I(",");
+      APP_PRINT_I(String(distanceToGoal, 2));  APP_PRINT_I(",");
+      APP_PRINT_I(String(directionToGoal, 2)); APP_PRINT_I(",");
     }
 
     APP_PRINT_I("\n");
@@ -355,6 +393,12 @@ void CansatLib::_beep(float *mm, int m_size, int b_time) {
     delay(b_time);
   }
   noTone(_speaker);
+}
+
+void CansatLib::_updateCdsValue() {
+  APP_PRINT_I("called _updateCdsValue()\n");
+
+  cdsValue = readCds();
 }
 
 /** 
@@ -424,29 +468,30 @@ String CansatLib::_createMessage() {
   unsigned long currentTime = millis();
 
   String message = "";
-  message += String(currentTime);    message += ","; // time
-  message += String(currentDate);    message += ","; // date
-  message += String((int)state);     message += ","; // mode
-  message += String(currentLat);     message += ","; // lat
-  message += String(currentLng);     message += ","; // lng
-  message += String(currentAlt);     message += ","; // alt
-  message += String(distance2goal);  message += ","; // distance
-  message += String(direction2goal); message += ","; // direction
-  message += ","; // mr_pwm
-  message += ","; // ml_pwm
-  message += ","; // cds
-  message += String(accX);           message += ","; // ax
-  message += String(accY);           message += ","; // ay
-  message += String(accZ);           message += ","; // az
-  message += String(gyroX);          message += ","; // gx
-  message += String(gyroY);          message += ","; // gy
-  message += String(gyroZ);          message += ","; // gz
-  message += String(magX);           message += ","; // mx
-  message += String(magY);           message += ","; // my
-  message += String(magZ);           message += ","; // mz
-  message += String(roll);           message += ","; // roll
-  message += String(pitch);          message += ","; // pitch
-  message += String(heading);        message += ","; // heading
+  message += String(currentTime);     message += ","; // time
+  message += String(currentDate);     message += ","; // date
+  message += String((int)state);      message += ","; // mode
+  message += String(currentLat);      message += ","; // lat
+  message += String(currentLng);      message += ","; // lng
+  message += String(currentAlt);      message += ","; // alt
+  message += String(distanceToGoal);  message += ","; // distance
+  message += String(directionToGoal); message += ","; // direction
+  message += String(mr_pwm);          message += ","; // mr_pwm
+  message += String(ml_pwm);          message += ","; // ml_pwm
+  message += String(mOutputTime);     message += ","; // mOutputTime
+  message += String(cdsValue);        message += ","; // cds
+  message += String(accX);            message += ","; // ax
+  message += String(accY);            message += ","; // ay
+  message += String(accZ);            message += ","; // az
+  message += String(gyroX);           message += ","; // gx
+  message += String(gyroY);           message += ","; // gy
+  message += String(gyroZ);           message += ","; // gz
+  message += String(magX);            message += ","; // mx
+  message += String(magY);            message += ","; // my
+  message += String(magZ);            message += ","; // mz
+  message += String(roll);            message += ","; // roll
+  message += String(pitch);           message += ","; // pitch
+  message += String(heading);         message += ","; // heading
 
   return message;
 }

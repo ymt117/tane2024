@@ -6,7 +6,7 @@
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BNO055.h>
-#include <Math.h>
+// #include <Math.h>
 #include "PrintLib.h"
 
 #define DELETE_EXIST_LOG_FILE
@@ -35,6 +35,11 @@ enum class PrintLevel {
 struct UserConfig {
   double goalLat;
   double goalLng;
+  int altThreshold;
+  long timeThreshold;
+  int cdsThreshold;
+  double accThreshold;
+  int distanceThreshold;
 };
 
 class CansatLib {
@@ -50,7 +55,7 @@ class CansatLib {
     /** SDカード */
     SDClass SD;
     File myFile;
-    const String CSV_HEADER = "time,date,mode,lat,lng,alt,distance,direction,mr_pwm,ml_pwm,cds,ax,ay,az,gx,gy,gz,mx,my,mz,roll,pitch,heading";
+    const String CSV_HEADER = "time,date,mode,lat,lng,alt,distance,direction,mr_pwm,ml_pwm,mOutputTime,cds,ax,ay,az,gx,gy,gz,mx,my,mz,roll,pitch,heading";
     bool appendLog();
 
     /** GNSS受信機 */
@@ -60,8 +65,8 @@ class CansatLib {
     double currentLat = 0.0;
     double currentLng = 0.0;
     double currentAlt = 0.0;
-    double distance2goal = 10000.0;
-    double direction2goal = 0.0;
+    double distanceToGoal = 10000.0;
+    double directionToGoal = 0.0;
 
     // IMUセンサ
     Adafruit_BNO055 bno = Adafruit_BNO055();
@@ -73,9 +78,13 @@ class CansatLib {
     /** LED */
     void Led_isActive();
     void Led_isPosfix(bool state);
+    void Led_isGoal();
     void Led_isError(bool state);
 
     /** モータ */
+    int mr_pwm = 0;
+    int ml_pwm = 0;
+    int mOutputTime = 0;
     void mForward(int pwm);
     void mTurnRight(int pwm);
     void mTurnLeft(int pwm);
@@ -87,7 +96,11 @@ class CansatLib {
     void spBeep();
 
     /** 照度センサ */
+    int cdsValue = -1000;
     int readCds();
+
+    /** 電熱線回路 */
+    void heatWire(int pwm, int time);
 
     /** Utils */
     /** センサーの情報を更新する */
@@ -97,8 +110,8 @@ class CansatLib {
 
   private:
     /** GPIO */
-    const uint8_t _motorA[3] = {8, 4, 5};
-    const uint8_t _motorB[3] = {7, 2, 3};
+    const uint8_t _motorR[3] = {8, 4, 5};
+    const uint8_t _motorL[3] = {7, 2, 3};
     const uint8_t _speaker = 9;
     const uint8_t _heat = 6;
     const uint8_t _cds = A0;
@@ -128,6 +141,9 @@ class CansatLib {
     float _error[5] = {mG*8, nn, mG*8, nn, mG*8};
     float _bell[2] = {mD*4, mF*4};
     void _beep(float *mm, int m_size, int b_time);
+
+    /** 照度センサ */
+    void _updateCdsValue();
 
     /** Utils */
     String _createDate(SpGnssTime time);
